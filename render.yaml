@@ -6,8 +6,8 @@ services:
     autoDeploy: true
     plan: free
     rootDir: backend
-    dockerfilePath: backend/Dockerfile
-    dockerContext: backend
+    dockerfilePath: Dockerfile
+    dockerContext: .
     envVars:
       - key: DATABASE_URL
         sync: false
