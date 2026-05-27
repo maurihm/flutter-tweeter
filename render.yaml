@@ -14,4 +14,17 @@ services:
       - key: JWT_SECRET
         sync: false
       - key: FRONTEND_ORIGIN
-        sync: false
+        value: https://flutter-tweeter-web.onrender.com
+
+  - type: web
+    name: flutter-tweeter-web
+    env: docker
+    branch: main
+    autoDeploy: true
+    plan: free
+    rootDir: .
+    dockerfilePath: frontend.Dockerfile
+    dockerContext: .
+    envVars:
+      - key: API_BASE_URL
+        value: https://flutter-tweeter-backend.onrender.com/api

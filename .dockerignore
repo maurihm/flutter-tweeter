@@ -1,0 +1,12 @@
+.git
+.dart_tool
+.flutter-plugins
+.flutter-plugins-dependencies
+.packages
+build
+**/build
+backend/target
+backend/.mvn
+.idea
+.vscode
+*.iml
