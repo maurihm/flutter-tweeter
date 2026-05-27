@@ -204,16 +204,16 @@ class _HomeScreenState extends State<HomeScreen> {
           children: [
             Container(
               width: double.infinity,
-              height: 150,
+              height: 180,
               decoration: BoxDecoration(
-                color: Colors.grey[200],
+                color: Colors.black12,
                 borderRadius: BorderRadius.circular(10),
               ),
               clipBehavior: Clip.antiAlias,
+              alignment: Alignment.center,
               child: Image.network(
                 post.photoUrl,
-                fit: BoxFit.cover,
-                alignment: Alignment.center,
+                fit: BoxFit.contain,
                 errorBuilder: (context, error, stackTrace) {
                   return Container(
                     color: Colors.grey[300],
