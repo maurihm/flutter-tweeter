@@ -196,39 +196,57 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget _buildPostCard(CarPost post) {
     return Card(
       margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+      clipBehavior: Clip.antiAlias,
       child: Padding(
         padding: const EdgeInsets.all(12),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            ClipRRect(
-              borderRadius: BorderRadius.circular(8),
-              child: SizedBox(
-                width: double.infinity,
-                height: 220,
-                child: Image.network(
-                  post.photoUrl,
-                  fit: BoxFit.cover,
-                  errorBuilder: (context, error, stackTrace) {
-                    return Container(
-                      color: Colors.grey[300],
-                      alignment: Alignment.center,
-                      child: const Icon(Icons.broken_image),
-                    );
-                  },
-                ),
+            Container(
+              width: double.infinity,
+              height: 150,
+              decoration: BoxDecoration(
+                color: Colors.grey[200],
+                borderRadius: BorderRadius.circular(10),
+              ),
+              clipBehavior: Clip.antiAlias,
+              child: Image.network(
+                post.photoUrl,
+                fit: BoxFit.cover,
+                alignment: Alignment.center,
+                errorBuilder: (context, error, stackTrace) {
+                  return Container(
+                    color: Colors.grey[300],
+                    alignment: Alignment.center,
+                    child: const Icon(Icons.broken_image),
+                  );
+                },
               ),
             ),
-            const SizedBox(height: 10),
-            Text(post.title, style: Theme.of(context).textTheme.titleMedium),
-            const SizedBox(height: 6),
-            if ((post.description ?? '').isNotEmpty) Text(post.description!),
-            const SizedBox(height: 6),
-            Text(
-              'Marca: ${post.brand ?? '-'} | Modelo: ${post.model ?? '-'} | Año: ${post.year?.toString() ?? '-'}',
+            const SizedBox(height: 12),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.grey[50],
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: Colors.grey.shade200),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(post.title, style: Theme.of(context).textTheme.titleMedium),
+                  const SizedBox(height: 6),
+                  if ((post.description ?? '').isNotEmpty) Text(post.description!),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Marca: ${post.brand ?? '-'} | Modelo: ${post.model ?? '-'} | Año: ${post.year?.toString() ?? '-'}',
+                  ),
+                  const SizedBox(height: 6),
+                  Text('Publicado por: ${post.authorDisplayName}'),
+                ],
+              ),
             ),
-            const SizedBox(height: 6),
-            Text('Publicado por: ${post.authorDisplayName}'),
           ],
         ),
       ),
