@@ -1,12 +1,11 @@
 services:
   - type: web
     name: flutter-tweeter-backend
-    env: standard
+    env: docker
     branch: main
-    buildCommand: mvn -B package -DskipTests
-    startCommand: java -jar target/flutter-tweeter-backend-0.1.0.jar
     autoDeploy: true
     plan: free
+    dockerfilePath: ./Dockerfile
     envVars:
       - key: DATABASE_URL
         value: "<PASTE_AIVEN_DATABASE_URL_HERE>"
