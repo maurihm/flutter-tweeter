@@ -1,6 +1,7 @@
-import 'package:http/http.dart' as http;
 import 'dart:convert';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:http/http.dart' as http;
+
+import '../config/api_config.dart';
 import '../models/user.dart';
 
 /// Singleton service for authentication
@@ -8,12 +9,9 @@ import '../models/user.dart';
 class AuthService {
   static final AuthService _instance = AuthService._internal();
 
-  final String baseUrl = 'http://localhost:8080/api';
   late http.Client _httpClient;
-  SharedPreferences? _prefs;
-
-  static const String _tokenKey = 'auth_token';
-  static const String _userKey = 'auth_user';
+  String? _token;
+  User? _currentUser;
 
   // Private constructor
   AuthService._internal() {
@@ -30,14 +28,38 @@ class AuthService {
     return _instance;
   }
 
-  /// Ensure SharedPreferences is initialized
-  Future<void> _ensureInit() async {
-    _prefs ??= await SharedPreferences.getInstance();
-  }
+  String get baseUrl => ApiConfig.baseUrl;
 
-  /// Initialize SharedPreferences
+  /// Ensure the in-memory session storage is ready.
+  Future<void> _ensureInit() async {}
+
+  /// Initialize the in-memory session storage.
   Future<void> init() async {
     await _ensureInit();
+  }
+
+  Map<String, dynamic> _decodeJsonMap(String responseBody) {
+    return Map<String, dynamic>.from(jsonDecode(responseBody) as Map);
+  }
+
+  Future<void> _storeSession(Map<String, dynamic> jsonData) async {
+    final token = jsonData['accessToken']?.toString() ?? '';
+
+    final user = User(
+      id: jsonData['id'] is int
+          ? jsonData['id'] as int
+          : int.tryParse(jsonData['id']?.toString() ?? ''),
+      username: jsonData['username']?.toString() ?? '',
+      email: jsonData['email']?.toString(),
+      displayName: jsonData['displayName']?.toString(),
+    );
+
+    if (token.isEmpty) {
+      throw Exception('No access token received from server');
+    }
+
+    _token = token;
+    _currentUser = user;
   }
 
   /// Login with username and password
@@ -55,77 +77,62 @@ class AuthService {
         }),
       );
 
-      print('DEBUG LOGIN: Status code = ${response.statusCode}');
-      print('DEBUG LOGIN: Response body = ${response.body}');
-      
       if (response.statusCode == 200) {
-        final jsonData = jsonDecode(response.body);
-        
-        print('DEBUG LOGIN: Parsed JSON = $jsonData');
-        print('DEBUG LOGIN: JSON keys = ${jsonData.keys.toList()}');
-        
-        // Extract accessToken from response (API returns 'accessToken', not 'token')
-        final token = jsonData['accessToken']?.toString() ?? '';
-        print('DEBUG LOGIN: AccessToken value = "$token"');
-        print('DEBUG LOGIN: AccessToken is null? ${jsonData['accessToken'] == null}');
-        
-        // Extract user data from root level (not nested in 'user' object)
-        final userData = {
-          'id': jsonData['id'],
-          'username': jsonData['username'],
-          'email': jsonData['email'],
-        };
-        
-        print('DEBUG LOGIN: User data = $userData');
-        
-        if (token.isEmpty) {
-          throw Exception('No access token received from server');
-        }
-        
-        // Save token to SharedPreferences
-        await _prefs!.setString(_tokenKey, token);
-        
-        // Create and save user
-        final user = User.fromJson(userData);
-        await _prefs!.setString(_userKey, jsonEncode(user.toJson()));
-        
-        print('✅ DEBUG: Token saved successfully - "$token"');
-        print('✅ DEBUG: User saved - ${user.username}');
-        
-        return user;
+        final jsonData = _decodeJsonMap(response.body);
+        await _storeSession(jsonData);
+        return getUser()!;
       } else {
         throw Exception(
           'Failed to login. Status code: ${response.statusCode}. ${response.body}',
         );
       }
     } catch (e) {
-      print('❌ DEBUG LOGIN ERROR: $e');
       throw Exception('Error during login: $e');
+    }
+  }
+
+  Future<User> register({
+    required String username,
+    required String email,
+    required String password,
+    String? displayName,
+  }) async {
+    try {
+      await _ensureInit();
+
+      final response = await _httpClient.post(
+        Uri.parse('$baseUrl/auth/register'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'username': username,
+          'email': email,
+          'password': password,
+          'displayName': displayName,
+        }),
+      );
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        final jsonData = _decodeJsonMap(response.body);
+        await _storeSession(jsonData);
+        return getUser()!;
+      } else {
+        throw Exception(
+          'Failed to register. Status code: ${response.statusCode}. ${response.body}',
+        );
+      }
+    } catch (e) {
+      throw Exception('Error during registration: $e');
     }
   }
 
   /// Get the stored token (synchronously - ensures prefs is initialized)
   String? getToken() {
-    // Attempt to get token synchronously
-    // This assumes _prefs was already initialized
-    if (_prefs == null) {
-      return null;
-    }
-    final token = _prefs!.getString(_tokenKey);
-    return token;
+    return _token;
   }
 
   /// Get the stored user
   User? getUser() {
-    if (_prefs == null) {
-      return null;
-    }
-    final userJson = _prefs!.getString(_userKey);
-    if (userJson != null) {
-      final jsonData = jsonDecode(userJson) as Map<String, dynamic>;
-      return User.fromJson(jsonData);
-    }
-    return null;
+    return _currentUser;
   }
 
   /// Check if user is authenticated
@@ -135,9 +142,8 @@ class AuthService {
 
   /// Logout - clear token and user
   Future<void> logout() async {
-    await _ensureInit();
-    await _prefs!.remove(_tokenKey);
-    await _prefs!.remove(_userKey);
+    _token = null;
+    _currentUser = null;
   }
 
   /// Close the HTTP client (cleanup)

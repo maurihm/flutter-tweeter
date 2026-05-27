@@ -1,0 +1,19 @@
+services:
+  - type: web
+    name: flutter-tweeter-backend
+    env: standard
+    branch: main
+    buildCommand: mvn -B package -DskipTests
+    startCommand: java -jar target/flutter-tweeter-backend-0.1.0.jar
+    autoDeploy: true
+    plan: free
+    envVars:
+      - key: DATABASE_URL
+        value: "<PASTE_AIVEN_DATABASE_URL_HERE>"
+        scope: env
+      - key: JWT_SECRET
+        value: "<SET_A_STRONG_SECRET>"
+        scope: env
+      - key: FRONTEND_ORIGIN
+        value: "<OPTIONAL_FRONTEND_ORIGIN>"
+        scope: env

@@ -53,7 +53,7 @@ class TweetService implements ITweetRepository {
       await _authService.init();
 
       final response = await _httpClient.get(
-        Uri.parse('$baseUrl/tweets/all'),
+        Uri.parse('$baseUrl/tweets'),
         headers: _getHeaders(),
       );
 
@@ -80,7 +80,7 @@ class TweetService implements ITweetRepository {
       await _authService.init();
 
       final response = await _httpClient.post(
-        Uri.parse('$baseUrl/tweets/create'),
+        Uri.parse('$baseUrl/tweets'),
         headers: _getHeaders(),
         body: jsonEncode({'tweet': content}),
       );

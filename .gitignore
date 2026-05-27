@@ -1,4 +1,48 @@
-# Miscellaneous
+# Flutter / Dart
+.dart_tool/
+.packages
+/.flutter-plugins
+/.flutter-plugins-dependencies
+build/
+**/build/
+pubspec.lock
+
+# IntelliJ / VSCode
+.idea/
+*.iml
+.vscode/
+
+# macOS
+.DS_Store
+
+# Android
+/android/.gradle
+/android/.idea
+/android/local.properties
+/android/**/generated/
+/android/**/build/
+
+# iOS
+/ios/Pods/
+/ios/Flutter/Flutter.framework
+
+# Native build outputs
+/.gradle/
+
+# Maven / Java
+/backend/target/
+/backend/.mvn/
+*.class
+*.jar
+*.war
+*.ear
+
+# Logs
+.log
+
+# Environment files
+.env
+*.env# Miscellaneous
 *.class
 *.log
 *.pyc
