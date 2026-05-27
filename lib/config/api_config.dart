@@ -8,19 +8,19 @@ class ApiConfig {
     if (_envBaseUrl.isNotEmpty) return _envBaseUrl;
 
     if (kIsWeb) {
-      return 'http://localhost:8080/api';
+      return 'http://localhost:8080';
     }
 
     switch (defaultTargetPlatform) {
       case TargetPlatform.android:
-        return 'http://10.0.2.2:8080/api';
+        return 'http://10.0.2.2:8080';
       case TargetPlatform.iOS:
       case TargetPlatform.macOS:
       case TargetPlatform.linux:
       case TargetPlatform.windows:
-        return 'http://localhost:8080/api';
+        return 'http://localhost:8080';
       default:
-        return 'http://localhost:8080/api';
+        return 'http://localhost:8080';
     }
   }
 }

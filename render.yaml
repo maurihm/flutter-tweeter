@@ -27,4 +27,4 @@ services:
     dockerContext: .
     envVars:
       - key: API_BASE_URL
-        value: https://flutter-tweeter-backend.onrender.com/api
+        value: https://flutter-tweeter-backend.onrender.com
