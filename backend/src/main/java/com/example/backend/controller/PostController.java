@@ -2,6 +2,7 @@ package com.example.backend.controller;
 
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -13,7 +14,8 @@ import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import com.example.backend.model.CarPost;
+import com.example.backend.model.PostResponse;
+import com.example.backend.model.ReactionType;
 import com.example.backend.service.AuthService;
 import com.example.backend.service.CarPostService;
 
@@ -29,8 +31,10 @@ public class PostController {
     }
 
     @GetMapping
-    public ResponseEntity<List<CarPost>> getPosts() {
-        return ResponseEntity.ok(carPostService.fetchPosts());
+    public ResponseEntity<List<PostResponse>> getPosts(
+            @RequestHeader(value = "Authorization", required = false) String authHeader) {
+        Long userId = extractUserId(authHeader);
+        return ResponseEntity.ok(carPostService.fetchPosts(userId));
     }
 
     @PostMapping
@@ -52,8 +56,36 @@ public class PostController {
             return ResponseEntity.badRequest().body(Map.of("error", "Title and photoUrl are required"));
         }
 
-        CarPost post = carPostService.createPost(userId, title, brand, model, year, photoUrl, description);
+        PostResponse post = carPostService.createPost(userId, title, brand, model, year, photoUrl, description);
         return ResponseEntity.status(201).body(post);
+    }
+
+    @PostMapping("/{id}/reactions")
+    public ResponseEntity<?> reactToPost(@RequestHeader(value = "Authorization", required = false) String authHeader,
+                                         @PathVariable Long id,
+                                         @RequestBody Map<String, Object> payload) {
+        Long userId = extractUserId(authHeader);
+        if (userId == null) {
+            return ResponseEntity.status(401).body(Map.of("error", "Unauthorized"));
+        }
+
+        String typeRaw = payload.get("type") == null ? "" : payload.get("type").toString().trim();
+        if (typeRaw.isBlank()) {
+            return ResponseEntity.badRequest().body(Map.of("error", "Reaction type is required"));
+        }
+
+        ReactionType reactionType;
+        try {
+            reactionType = ReactionType.valueOf(typeRaw.toUpperCase());
+        } catch (IllegalArgumentException ex) {
+            String supported = java.util.Arrays.stream(ReactionType.values())
+                    .map(Enum::name)
+                    .collect(Collectors.joining(", "));
+            return ResponseEntity.badRequest().body(Map.of("error", "Invalid reaction type. Allowed: " + supported));
+        }
+
+        PostResponse post = carPostService.reactToPost(id, userId, reactionType);
+        return ResponseEntity.ok(post);
     }
 
     @DeleteMapping("/{id}")

@@ -117,5 +117,24 @@ class CarPostService {
     }
   }
 
+  Future<CarPost> reactToPost({
+    required int postId,
+    required String reactionType,
+  }) async {
+    await _authService.init();
+
+    final response = await _httpClient.post(
+      Uri.parse('$baseUrl/posts/$postId/reactions'),
+      headers: _getHeaders(),
+      body: jsonEncode({'type': reactionType}),
+    );
+
+    if (response.statusCode == 200) {
+      return _parsePost(response.body);
+    }
+
+    throw Exception('Error reacting to post: ${response.statusCode} ${response.body}');
+  }
+
   void dispose() {}
 }

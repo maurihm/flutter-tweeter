@@ -1,4 +1,13 @@
 class CarPost {
+  static const List<String> reactionTypes = [
+    'LIKE',
+    'LOVE',
+    'ANGRY',
+    'SAD',
+    'WOW',
+    'LAUGH',
+  ];
+
   final int id;
   final String title;
   final String? brand;
@@ -9,6 +18,8 @@ class CarPost {
   final String authorUsername;
   final String authorDisplayName;
   final DateTime? createdAt;
+  final Map<String, int> reactions;
+  final String? userReaction;
 
   CarPost({
     required this.id,
@@ -21,7 +32,48 @@ class CarPost {
     this.year,
     this.description,
     this.createdAt,
+    this.reactions = const {
+      'LIKE': 0,
+      'LOVE': 0,
+      'ANGRY': 0,
+      'SAD': 0,
+      'WOW': 0,
+      'LAUGH': 0,
+    },
+    this.userReaction,
   });
+
+  static Map<String, int> _parseReactions(dynamic value) {
+    final result = <String, int>{for (final type in reactionTypes) type: 0};
+
+    if (value is Map) {
+      value.forEach((key, dynamic rawCount) {
+        final normalizedKey = key.toString().toUpperCase();
+        if (!result.containsKey(normalizedKey)) {
+          return;
+        }
+
+        if (rawCount is int) {
+          result[normalizedKey] = rawCount;
+          return;
+        }
+
+        final parsed = int.tryParse(rawCount?.toString() ?? '0') ?? 0;
+        result[normalizedKey] = parsed;
+      });
+    }
+
+    return result;
+  }
+
+  static String? _parseUserReaction(dynamic value) {
+    if (value == null) {
+      return null;
+    }
+
+    final normalized = value.toString().toUpperCase();
+    return reactionTypes.contains(normalized) ? normalized : null;
+  }
 
   factory CarPost.fromJson(Map<String, dynamic> json) {
     final id = json['id'];
@@ -41,6 +93,8 @@ class CarPost {
       createdAt: createdAt == null
           ? null
           : DateTime.tryParse(createdAt.toString()),
+      reactions: _parseReactions(json['reactions']),
+      userReaction: _parseUserReaction(json['userReaction']),
     );
   }
 
@@ -56,6 +110,8 @@ class CarPost {
       'authorUsername': authorUsername,
       'authorDisplayName': authorDisplayName,
       'createdAt': createdAt?.toIso8601String(),
+      'reactions': reactions,
+      'userReaction': userReaction,
     };
   }
 }

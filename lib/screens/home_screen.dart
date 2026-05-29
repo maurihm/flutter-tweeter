@@ -1,4 +1,8 @@
+import 'dart:convert';
+import 'dart:typed_data';
+
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 
 import '../models/car_post.dart';
 import '../models/user.dart';
@@ -13,8 +17,18 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
+  static const Map<String, String> _reactionEmoji = {
+    'LIKE': '👍',
+    'LOVE': '❤️',
+    'ANGRY': '😡',
+    'SAD': '😢',
+    'WOW': '😮',
+    'LAUGH': '😂',
+  };
+
   final AuthService _authService = AuthService();
   final CarPostService _postService = CarPostService();
+  final ImagePicker _imagePicker = ImagePicker();
   final TextEditingController _titleController = TextEditingController();
   final TextEditingController _brandController = TextEditingController();
   final TextEditingController _modelController = TextEditingController();
@@ -24,6 +38,9 @@ class _HomeScreenState extends State<HomeScreen> {
 
   late Future<List<CarPost>> _postsFuture;
   bool _isLoading = false;
+  Uint8List? _selectedImageBytes;
+  String? _selectedImageDataUri;
+  final Set<int> _reactingPostIds = <int>{};
 
   @override
   void initState() {
@@ -62,11 +79,11 @@ class _HomeScreenState extends State<HomeScreen> {
     final brand = _brandController.text.trim();
     final model = _modelController.text.trim();
     final year = int.tryParse(_yearController.text.trim());
-    final photoUrl = _photoUrlController.text.trim();
+    final photoUrl = _selectedImageDataUri ?? _photoUrlController.text.trim();
     final description = _descriptionController.text.trim();
 
     if (title.isEmpty || photoUrl.isEmpty) {
-      _showErrorDialog('Completa al menos el titulo y la URL de la foto.');
+      _showErrorDialog('Completa al menos el titulo y agrega una foto (URL, galeria o camara).');
       return;
     }
 
@@ -88,6 +105,8 @@ class _HomeScreenState extends State<HomeScreen> {
       _yearController.clear();
       _photoUrlController.clear();
       _descriptionController.clear();
+      _selectedImageBytes = null;
+      _selectedImageDataUri = null;
       _reloadPosts();
 
       if (mounted) {
@@ -99,6 +118,110 @@ class _HomeScreenState extends State<HomeScreen> {
       _showErrorDialog('No se pudo publicar: $e');
     } finally {
       if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  Future<void> _pickImage(ImageSource source) async {
+    try {
+      final image = await _imagePicker.pickImage(
+        source: source,
+        maxWidth: 1280,
+        imageQuality: 78,
+      );
+
+      if (image == null) {
+        return;
+      }
+
+      final bytes = await image.readAsBytes();
+      final mime = _mimeTypeFromPath(image.path);
+      final dataUri = 'data:$mime;base64,${base64Encode(bytes)}';
+
+      if (!mounted) {
+        return;
+      }
+
+      setState(() {
+        _selectedImageBytes = bytes;
+        _selectedImageDataUri = dataUri;
+      });
+    } catch (e) {
+      _showErrorDialog('No se pudo seleccionar la imagen: $e');
+    }
+  }
+
+  String _mimeTypeFromPath(String path) {
+    final normalized = path.toLowerCase();
+    if (normalized.endsWith('.png')) {
+      return 'image/png';
+    }
+    if (normalized.endsWith('.webp')) {
+      return 'image/webp';
+    }
+    return 'image/jpeg';
+  }
+
+  void _clearPickedImage() {
+    setState(() {
+      _selectedImageBytes = null;
+      _selectedImageDataUri = null;
+    });
+  }
+
+  Future<void> _showImageSourceSheet() async {
+    await showModalBottomSheet<void>(
+      context: context,
+      builder: (context) {
+        return SafeArea(
+          child: Wrap(
+            children: [
+              ListTile(
+                leading: const Icon(Icons.photo_library),
+                title: const Text('Elegir de galeria'),
+                onTap: () {
+                  Navigator.of(context).pop();
+                  _pickImage(ImageSource.gallery);
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.photo_camera),
+                title: const Text('Tomar foto'),
+                onTap: () {
+                  Navigator.of(context).pop();
+                  _pickImage(ImageSource.camera);
+                },
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Future<void> _reactToPost(CarPost post, String reactionType) async {
+    if (_reactingPostIds.contains(post.id)) {
+      return;
+    }
+
+    setState(() {
+      _reactingPostIds.add(post.id);
+    });
+
+    try {
+      await _postService.reactToPost(postId: post.id, reactionType: reactionType);
+      _reloadPosts();
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('No se pudo reaccionar: $e')),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _reactingPostIds.remove(post.id);
+        });
+      }
     }
   }
 
@@ -147,6 +270,32 @@ class _HomeScreenState extends State<HomeScreen> {
             controller: _photoUrlController,
             decoration: _fieldDecoration('URL de la foto', Icons.image),
           ),
+          const SizedBox(height: 8),
+          OutlinedButton.icon(
+            onPressed: _isLoading ? null : _showImageSourceSheet,
+            icon: const Icon(Icons.add_a_photo),
+            label: const Text('Elegir foto (galeria/camara)'),
+          ),
+          if (_selectedImageBytes != null) ...[
+            const SizedBox(height: 10),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(10),
+              child: Image.memory(
+                _selectedImageBytes!,
+                height: 160,
+                width: double.infinity,
+                fit: BoxFit.cover,
+              ),
+            ),
+            Align(
+              alignment: Alignment.centerRight,
+              child: TextButton.icon(
+                onPressed: _isLoading ? null : _clearPickedImage,
+                icon: const Icon(Icons.close),
+                label: const Text('Quitar foto seleccionada'),
+              ),
+            ),
+          ],
           const SizedBox(height: 12),
           Row(
             children: [
@@ -194,6 +343,44 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildPostCard(CarPost post) {
+    Widget imageWidget;
+    if (post.photoUrl.startsWith('data:image')) {
+      final parts = post.photoUrl.split(',');
+      if (parts.length == 2) {
+        try {
+          final bytes = base64Decode(parts[1]);
+          imageWidget = Image.memory(
+            bytes,
+            fit: BoxFit.contain,
+          );
+        } catch (_) {
+          imageWidget = Container(
+            color: Colors.grey[300],
+            alignment: Alignment.center,
+            child: const Icon(Icons.broken_image),
+          );
+        }
+      } else {
+        imageWidget = Container(
+          color: Colors.grey[300],
+          alignment: Alignment.center,
+          child: const Icon(Icons.broken_image),
+        );
+      }
+    } else {
+      imageWidget = Image.network(
+        post.photoUrl,
+        fit: BoxFit.contain,
+        errorBuilder: (context, error, stackTrace) {
+          return Container(
+            color: Colors.grey[300],
+            alignment: Alignment.center,
+            child: const Icon(Icons.broken_image),
+          );
+        },
+      );
+    }
+
     return Card(
       margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
       clipBehavior: Clip.antiAlias,
@@ -211,17 +398,7 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
               clipBehavior: Clip.antiAlias,
               alignment: Alignment.center,
-              child: Image.network(
-                post.photoUrl,
-                fit: BoxFit.contain,
-                errorBuilder: (context, error, stackTrace) {
-                  return Container(
-                    color: Colors.grey[300],
-                    alignment: Alignment.center,
-                    child: const Icon(Icons.broken_image),
-                  );
-                },
-              ),
+              child: imageWidget,
             ),
             const SizedBox(height: 12),
             Container(
@@ -246,6 +423,26 @@ class _HomeScreenState extends State<HomeScreen> {
                   Text('Publicado por: ${post.authorDisplayName}'),
                 ],
               ),
+            ),
+            const SizedBox(height: 10),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: _reactionEmoji.entries.map((entry) {
+                final reactionType = entry.key;
+                final reactionIcon = entry.value;
+                final count = post.reactions[reactionType] ?? 0;
+                final selected = post.userReaction == reactionType;
+                final reacting = _reactingPostIds.contains(post.id);
+
+                return ChoiceChip(
+                  label: Text('$reactionIcon $count'),
+                  selected: selected,
+                  onSelected: reacting
+                      ? null
+                      : (_) => _reactToPost(post, reactionType),
+                );
+              }).toList(),
             ),
           ],
         ),

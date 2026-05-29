@@ -67,7 +67,7 @@ class _LoginScreenState extends State<LoginScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('CarTweeter Login'),
+        title: const Text('Carros API'),
         centerTitle: true,
       ),
       body: SingleChildScrollView(
@@ -83,7 +83,7 @@ class _LoginScreenState extends State<LoginScreen> {
             ),
             const SizedBox(height: 16),
             Text(
-              'CarTweeter',
+              'Carros API',
               textAlign: TextAlign.center,
               style: Theme.of(
                 context,

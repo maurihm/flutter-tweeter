@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 
@@ -67,15 +68,16 @@ class AuthService {
   Future<User> login(String username, String password) async {
     try {
       await _ensureInit();
-      
-      final response = await _httpClient.post(
+      final response = await _httpClient
+          .post(
         Uri.parse('$baseUrl/auth/signin'),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({
           'username': username,
           'password': password,
         }),
-      );
+      )
+          .timeout(const Duration(seconds: 15));
 
       if (response.statusCode == 200) {
         final jsonData = _decodeJsonMap(response.body);
@@ -86,6 +88,8 @@ class AuthService {
           'Failed to login. Status code: ${response.statusCode}. ${response.body}',
         );
       }
+    } on TimeoutException catch (_) {
+      throw Exception('Error during login: request timed out');
     } catch (e) {
       throw Exception('Error during login: $e');
     }
@@ -100,7 +104,8 @@ class AuthService {
     try {
       await _ensureInit();
 
-      final response = await _httpClient.post(
+      final response = await _httpClient
+          .post(
         Uri.parse('$baseUrl/auth/register'),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({
@@ -109,7 +114,8 @@ class AuthService {
           'password': password,
           'displayName': displayName,
         }),
-      );
+      )
+          .timeout(const Duration(seconds: 15));
 
       if (response.statusCode == 200 || response.statusCode == 201) {
         final jsonData = _decodeJsonMap(response.body);
@@ -120,6 +126,8 @@ class AuthService {
           'Failed to register. Status code: ${response.statusCode}. ${response.body}',
         );
       }
+    } on TimeoutException catch (_) {
+      throw Exception('Error during registration: request timed out');
     } catch (e) {
       throw Exception('Error during registration: $e');
     }

@@ -7,6 +7,7 @@ import javax.persistence.Entity;
 import javax.persistence.GeneratedValue;
 import javax.persistence.GenerationType;
 import javax.persistence.Id;
+import javax.persistence.Lob;
 import javax.persistence.Table;
 
 @Entity
@@ -23,7 +24,8 @@ public class CarPost {
     private String model;
     private Integer year;
 
-    @Column(nullable = false, length = 2048)
+    @Lob
+    @Column(nullable = false, columnDefinition = "TEXT")
     private String photoUrl;
 
     @Column(length = 4000)
