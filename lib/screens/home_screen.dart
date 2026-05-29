@@ -252,6 +252,35 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
+  List<Widget> _buildAppBarActions(BuildContext context, User? user) {
+    final width = MediaQuery.sizeOf(context).width;
+    final showUsername = width >= 720;
+
+    return [
+      if (showUsername)
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12),
+          child: Center(
+            child: Text(
+              'Usuario: ${user?.displayName ?? user?.username ?? 'Invitado'}',
+              style: const TextStyle(fontSize: 13),
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+        ),
+      PopupMenuButton<String>(
+        onSelected: (value) {
+          if (value == 'logout') {
+            _logout();
+          }
+        },
+        itemBuilder: (context) => const [
+          PopupMenuItem(value: 'logout', child: Text('Cerrar sesion')),
+        ],
+      ),
+    ];
+  }
+
   Widget _buildComposer() {
     return Container(
       color: Colors.grey[100],
@@ -457,91 +486,78 @@ class _HomeScreenState extends State<HomeScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('CarTweeter - Publicaciones'),
-        actions: [
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 12),
-            child: Center(
-              child: Text(
-                'Usuario: ${user?.displayName ?? user?.username ?? 'Invitado'}',
-                style: const TextStyle(fontSize: 13),
-              ),
-            ),
-          ),
-          PopupMenuButton<String>(
-            onSelected: (value) {
-              if (value == 'logout') {
-                _logout();
-              }
-            },
-            itemBuilder: (context) => const [
-              PopupMenuItem(value: 'logout', child: Text('Cerrar sesion')),
-            ],
-          ),
-        ],
+        actions: _buildAppBarActions(context, user),
       ),
-      body: Column(
-        children: [
-          _buildComposer(),
-          Expanded(
-            child: FutureBuilder<List<CarPost>>(
-              future: _postsFuture,
-              builder: (context, snapshot) {
-                if (snapshot.connectionState == ConnectionState.waiting) {
-                  return const Center(child: CircularProgressIndicator());
-                }
-
-                if (snapshot.hasError) {
-                  return Center(
-                    child: Padding(
-                      padding: const EdgeInsets.all(20),
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          const Icon(
-                            Icons.error_outline,
-                            color: Colors.red,
-                            size: 64,
-                          ),
-                          const SizedBox(height: 12),
-                          Text(
-                            '${snapshot.error}',
-                            textAlign: TextAlign.center,
-                          ),
-                          const SizedBox(height: 14),
-                          ElevatedButton(
-                            onPressed: _reloadPosts,
-                            child: const Text('Reintentar'),
-                          ),
-                        ],
-                      ),
-                    ),
-                  );
-                }
-
-                final posts = snapshot.data ?? const <CarPost>[];
-                if (posts.isEmpty) {
-                  return const Center(
-                    child: Text('No hay publicaciones todavia'),
-                  );
-                }
-
-                return RefreshIndicator(
-                  onRefresh: () async {
-                    _reloadPosts();
-                    await _postsFuture;
-                  },
-                  child: ListView.builder(
-                    padding: const EdgeInsets.only(top: 8, bottom: 16),
-                    itemCount: posts.length,
-                    itemBuilder: (context, index) {
-                      return _buildPostCard(posts[index]);
-                    },
+      body: RefreshIndicator(
+        onRefresh: () async {
+          _reloadPosts();
+          await _postsFuture;
+        },
+        child: FutureBuilder<List<CarPost>>(
+          future: _postsFuture,
+          builder: (context, snapshot) {
+            if (snapshot.connectionState == ConnectionState.waiting) {
+              return ListView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                children: [
+                  _buildComposer(),
+                  const SizedBox(
+                    height: 240,
+                    child: Center(child: CircularProgressIndicator()),
                   ),
-                );
-              },
-            ),
-          ),
-        ],
+                ],
+              );
+            }
+
+            if (snapshot.hasError) {
+              return ListView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                children: [
+                  _buildComposer(),
+                  Padding(
+                    padding: const EdgeInsets.all(20),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Icon(
+                          Icons.error_outline,
+                          color: Colors.red,
+                          size: 64,
+                        ),
+                        const SizedBox(height: 12),
+                        Text(
+                          '${snapshot.error}',
+                          textAlign: TextAlign.center,
+                        ),
+                        const SizedBox(height: 14),
+                        ElevatedButton(
+                          onPressed: _reloadPosts,
+                          child: const Text('Reintentar'),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              );
+            }
+
+            final posts = snapshot.data ?? const <CarPost>[];
+            return ListView(
+              physics: const AlwaysScrollableScrollPhysics(),
+              padding: const EdgeInsets.only(bottom: 16),
+              children: [
+                _buildComposer(),
+                if (posts.isEmpty)
+                  const Padding(
+                    padding: EdgeInsets.symmetric(vertical: 40),
+                    child: Center(child: Text('No hay publicaciones todavia')),
+                  )
+                else
+                  ...posts.map(_buildPostCard),
+              ],
+            );
+          },
+        ),
       ),
     );
   }
