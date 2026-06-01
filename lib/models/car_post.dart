@@ -1,3 +1,5 @@
+import 'comment.dart';
+
 class CarPost {
   static const List<String> reactionTypes = [
     'LIKE',
@@ -20,6 +22,7 @@ class CarPost {
   final DateTime? createdAt;
   final Map<String, int> reactions;
   final String? userReaction;
+  final List<Comment> comments;
 
   CarPost({
     required this.id,
@@ -41,6 +44,7 @@ class CarPost {
       'LAUGH': 0,
     },
     this.userReaction,
+    this.comments = const [],
   });
 
   static Map<String, int> _parseReactions(dynamic value) {
@@ -95,6 +99,11 @@ class CarPost {
           : DateTime.tryParse(createdAt.toString()),
       reactions: _parseReactions(json['reactions']),
       userReaction: _parseUserReaction(json['userReaction']),
+      comments: (json['comments'] is List)
+          ? (json['comments'] as List)
+              .map((e) => Comment.fromJson(Map<String, dynamic>.from(e as Map)))
+              .toList()
+          : const [],
     );
   }
 
@@ -112,6 +121,7 @@ class CarPost {
       'createdAt': createdAt?.toIso8601String(),
       'reactions': reactions,
       'userReaction': userReaction,
+        'comments': comments.map((c) => c.toJson()).toList(),
     };
   }
 }

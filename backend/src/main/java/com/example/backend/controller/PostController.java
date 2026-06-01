@@ -100,6 +100,46 @@ public class PostController {
         return ResponseEntity.noContent().build();
     }
 
+    @GetMapping("/{id}/comments")
+    public ResponseEntity<?> getComments(@PathVariable Long id) {
+        return ResponseEntity.ok(carPostService.fetchComments(id));
+    }
+
+    @PostMapping("/{id}/comments")
+    public ResponseEntity<?> addComment(@RequestHeader(value = "Authorization", required = false) String authHeader,
+                                        @PathVariable Long id,
+                                        @RequestBody Map<String, Object> payload) {
+        Long userId = extractUserId(authHeader);
+        if (userId == null) {
+            return ResponseEntity.status(401).body(Map.of("error", "Unauthorized"));
+        }
+        String content = payload.get("content") == null ? "" : payload.get("content").toString();
+        if (content.isBlank()) {
+            return ResponseEntity.badRequest().body(Map.of("error", "Content is required"));
+        }
+        try {
+            return ResponseEntity.status(201).body(carPostService.addComment(id, userId, content));
+        } catch (RuntimeException ex) {
+            return ResponseEntity.status(400).body(Map.of("error", ex.getMessage()));
+        }
+    }
+
+    @DeleteMapping("/{postId}/comments/{commentId}")
+    public ResponseEntity<?> deleteComment(@RequestHeader(value = "Authorization", required = false) String authHeader,
+                                           @PathVariable Long postId,
+                                           @PathVariable Long commentId) {
+        Long userId = extractUserId(authHeader);
+        if (userId == null) {
+            return ResponseEntity.status(401).body(Map.of("error", "Unauthorized"));
+        }
+        try {
+            carPostService.deleteComment(postId, commentId, userId);
+            return ResponseEntity.noContent().build();
+        } catch (RuntimeException ex) {
+            return ResponseEntity.status(403).body(Map.of("error", ex.getMessage()));
+        }
+    }
+
     private Long extractUserId(String authHeader) {
         if (authHeader == null || !authHeader.startsWith("Bearer ")) return null;
         String token = authHeader.substring(7);

@@ -8,6 +8,7 @@ import '../models/car_post.dart';
 import '../models/user.dart';
 import '../services/auth_service.dart';
 import '../services/car_post_service.dart';
+import '../services/comment_service.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -35,6 +36,8 @@ class _HomeScreenState extends State<HomeScreen> {
   final TextEditingController _yearController = TextEditingController();
   final TextEditingController _photoUrlController = TextEditingController();
   final TextEditingController _descriptionController = TextEditingController();
+  final Map<int, TextEditingController> _commentControllers = {};
+  final Set<int> _sendingCommentIds = <int>{};
 
   late Future<List<CarPost>> _postsFuture;
   bool _isLoading = false;
@@ -222,6 +225,23 @@ class _HomeScreenState extends State<HomeScreen> {
           _reactingPostIds.remove(post.id);
         });
       }
+    }
+  }
+
+  Future<void> _createComment(CarPost post) async {
+    final controller = _commentControllers[post.id] ??= TextEditingController();
+    final content = controller.text.trim();
+    if (content.isEmpty) return;
+    setState(() => _sendingCommentIds.add(post.id));
+    try {
+      final svc = CommentService();
+      await svc.createComment(post.id, content);
+      controller.clear();
+      _reloadPosts();
+    } catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('No se pudo comentar: $e')));
+    } finally {
+      if (mounted) setState(() => _sendingCommentIds.remove(post.id));
     }
   }
 
@@ -472,6 +492,51 @@ class _HomeScreenState extends State<HomeScreen> {
                       : (_) => _reactToPost(post, reactionType),
                 );
               }).toList(),
+            ),
+            const SizedBox(height: 10),
+            // Comments preview and composer
+            if ((post.comments).isNotEmpty) ...[
+              const Divider(),
+              ...post.comments.map((c) => Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 6),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        CircleAvatar(radius: 14, child: Text(c.authorDisplayName.isNotEmpty ? c.authorDisplayName[0] : '?')),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(c.authorDisplayName, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                              const SizedBox(height: 4),
+                              Text(c.content),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ))
+            ],
+            const SizedBox(height: 6),
+            Row(
+              children: [
+                Expanded(
+                  child: TextField(
+                    controller: _commentControllers[post.id] ??= TextEditingController(),
+                    decoration: InputDecoration(hintText: 'Escribe un comentario...', border: OutlineInputBorder()),
+                    minLines: 1,
+                    maxLines: 3,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                ElevatedButton(
+                  onPressed: _sendingCommentIds.contains(post.id) ? null : () => _createComment(post),
+                  child: _sendingCommentIds.contains(post.id)
+                      ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
+                      : const Icon(Icons.send),
+                ),
+              ],
             ),
           ],
         ),

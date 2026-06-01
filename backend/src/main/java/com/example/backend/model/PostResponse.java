@@ -1,6 +1,7 @@
 package com.example.backend.model;
 
 import java.time.OffsetDateTime;
+import java.util.List;
 import java.util.Map;
 
 public class PostResponse {
@@ -16,8 +17,9 @@ public class PostResponse {
     private OffsetDateTime createdAt;
     private Map<String, Integer> reactions;
     private String userReaction;
+    private List<CommentResponse> comments;
 
-    public static PostResponse from(CarPost post, Map<String, Integer> reactions, String userReaction) {
+    public static PostResponse from(CarPost post, Map<String, Integer> reactions, String userReaction, List<CommentResponse> comments) {
         PostResponse response = new PostResponse();
         response.setId(post.getId());
         response.setTitle(post.getTitle());
@@ -31,6 +33,7 @@ public class PostResponse {
         response.setCreatedAt(post.getCreatedAt());
         response.setReactions(reactions);
         response.setUserReaction(userReaction);
+        response.setComments(comments);
         return response;
     }
 
@@ -128,5 +131,13 @@ public class PostResponse {
 
     public void setUserReaction(String userReaction) {
         this.userReaction = userReaction;
+    }
+
+    public List<CommentResponse> getComments() {
+        return comments;
+    }
+
+    public void setComments(List<CommentResponse> comments) {
+        this.comments = comments;
     }
 }
