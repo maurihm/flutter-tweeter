@@ -38,6 +38,7 @@ class _HomeScreenState extends State<HomeScreen> {
   final TextEditingController _descriptionController = TextEditingController();
   final Map<int, TextEditingController> _commentControllers = {};
   final Set<int> _sendingCommentIds = <int>{};
+  final Map<int, bool> _commentsVisible = {};
 
   late Future<List<CarPost>> _postsFuture;
   bool _isLoading = false;
@@ -243,6 +244,16 @@ class _HomeScreenState extends State<HomeScreen> {
     } finally {
       if (mounted) setState(() => _sendingCommentIds.remove(post.id));
     }
+  }
+
+  void _toggleComments(CarPost post) {
+    final current = _commentsVisible[post.id] ?? false;
+    setState(() {
+      _commentsVisible[post.id] = !current;
+      if (!_commentControllers.containsKey(post.id)) {
+        _commentControllers[post.id] = TextEditingController();
+      }
+    });
   }
 
   void _showErrorDialog(String message) {
@@ -494,50 +505,62 @@ class _HomeScreenState extends State<HomeScreen> {
               }).toList(),
             ),
             const SizedBox(height: 10),
-            // Comments preview and composer
-            if ((post.comments).isNotEmpty) ...[
-              const Divider(),
-              ...post.comments.map((c) => Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 6),
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        CircleAvatar(radius: 14, child: Text(c.authorDisplayName.isNotEmpty ? c.authorDisplayName[0] : '?')),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(c.authorDisplayName, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
-                              const SizedBox(height: 4),
-                              Text(c.content),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                  ))
-            ],
-            const SizedBox(height: 6),
+            // Actions row: comment toggle
             Row(
               children: [
-                Expanded(
-                  child: TextField(
-                    controller: _commentControllers[post.id] ??= TextEditingController(),
-                    decoration: InputDecoration(hintText: 'Escribe un comentario...', border: OutlineInputBorder()),
-                    minLines: 1,
-                    maxLines: 3,
-                  ),
+                TextButton.icon(
+                  onPressed: () => _toggleComments(post),
+                  icon: const Icon(Icons.comment_outlined),
+                  label: Text((_commentsVisible[post.id] ?? false) ? 'Ocultar comentarios' : 'Comentar'),
                 ),
                 const SizedBox(width: 8),
-                ElevatedButton(
-                  onPressed: _sendingCommentIds.contains(post.id) ? null : () => _createComment(post),
-                  child: _sendingCommentIds.contains(post.id)
-                      ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
-                      : const Icon(Icons.send),
-                ),
+                if ((post.comments).isNotEmpty) Text('${post.comments.length} comentarios'),
               ],
             ),
+            if ((_commentsVisible[post.id] ?? false)) ...[
+              const Divider(),
+              if ((post.comments).isNotEmpty)
+                ...post.comments.map((c) => Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 6),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          CircleAvatar(radius: 14, child: Text(c.authorDisplayName.isNotEmpty ? c.authorDisplayName[0] : '?')),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(c.authorDisplayName, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                                const SizedBox(height: 4),
+                                Text(c.content),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    )),
+              const SizedBox(height: 6),
+              Row(
+                children: [
+                  Expanded(
+                    child: TextField(
+                      controller: _commentControllers[post.id] ??= TextEditingController(),
+                      decoration: InputDecoration(hintText: 'Escribe un comentario...', border: OutlineInputBorder()),
+                      minLines: 1,
+                      maxLines: 3,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  ElevatedButton(
+                    onPressed: _sendingCommentIds.contains(post.id) ? null : () => _createComment(post),
+                    child: _sendingCommentIds.contains(post.id)
+                        ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
+                        : const Icon(Icons.send),
+                  ),
+                ],
+              ),
+            ],
           ],
         ),
       ),
